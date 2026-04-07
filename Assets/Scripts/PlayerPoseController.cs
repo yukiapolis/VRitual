@@ -38,6 +38,7 @@ public class PlayerPoseController : MonoBehaviour
     [SerializeField] private string standTriggerName = "TaiShou";
 
     private XRSeatAlignmentDebugger alignmentDebugger;
+    private PlayerVisualFollower visualFollower;
     private Tween moveTween;
     private Tween rotateTween;
     private bool isAligning;
@@ -64,6 +65,7 @@ public class PlayerPoseController : MonoBehaviour
         }
 
         alignmentDebugger = FindObjectOfType<XRSeatAlignmentDebugger>();
+        visualFollower = FindObjectOfType<PlayerVisualFollower>();
     }
 
     public void Configure(Transform root, Animator animator, Transform head, Transform stand, Transform sit, Transform crouch)
@@ -74,6 +76,9 @@ public class PlayerPoseController : MonoBehaviour
         standAnchor = stand;
         sitAnchor = sit;
         crouchAnchor = crouch;
+        visualFollower = FindObjectOfType<PlayerVisualFollower>();
+
+        Debug.Log($"PlayerPoseController.Configure: root={(playerRoot != null ? playerRoot.name : "null")}, animator={(playerAnimator != null ? playerAnimator.name : "null")}, head={(trackedHead != null ? trackedHead.name : "null")}, stand={(standAnchor != null ? standAnchor.name : "null")}, sit={(sitAnchor != null ? sitAnchor.name : "null")}, crouch={(crouchAnchor != null ? crouchAnchor.name : "null")}, visualFollower={(visualFollower != null ? visualFollower.name : "null")}");
 
         if (trackedHead == null && Camera.main != null)
         {
@@ -138,7 +143,34 @@ public class PlayerPoseController : MonoBehaviour
     public void ApplyPose(PlayerPose pose)
     {
         currentPose = pose;
-        Debug.Log($"PlayerPoseController.ApplyPose: pose={pose}, animator={(playerAnimator != null ? playerAnimator.name : "null")}, controller={(playerAnimator != null && playerAnimator.runtimeAnimatorController != null ? playerAnimator.runtimeAnimatorController.name : "null")}, avatar={(playerAnimator != null && playerAnimator.avatar != null ? playerAnimator.avatar.name : "null")}");
+        visualFollower ??= FindObjectOfType<PlayerVisualFollower>();
+        Debug.Log($"PlayerPoseController.ApplyPose: pose={pose}, animator={(playerAnimator != null ? playerAnimator.name : "null")}, controller={(playerAnimator != null && playerAnimator.runtimeAnimatorController != null ? playerAnimator.runtimeAnimatorController.name : "null")}, avatar={(playerAnimator != null && playerAnimator.avatar != null ? playerAnimator.avatar.name : "null")}, visualFollower={(visualFollower != null ? visualFollower.name : "null")}");
+
+        if (visualFollower != null)
+        {
+            bool enablePositionFollow = true;
+            bool enableRotationFollow = pose == PlayerPose.Stand;
+            visualFollower.SetFollowEnabled(enablePositionFollow, enableRotationFollow);
+
+            switch (pose)
+            {
+                case PlayerPose.Stand:
+                    visualFollower.ApplyStandProfile();
+                    break;
+                case PlayerPose.Sit:
+                    visualFollower.ApplySitProfile();
+                    break;
+                case PlayerPose.Crouch:
+                    visualFollower.ApplyCrouchProfile();
+                    break;
+            }
+
+            Debug.Log($"PlayerPoseController.ApplyPose: 已切换 PlayerVisualFollower，positionFollow={enablePositionFollow}, rotationFollow={enableRotationFollow}, pose={pose}");
+        }
+        else
+        {
+            Debug.LogWarning("PlayerPoseController.ApplyPose: 未找到 PlayerVisualFollower，无法切换跟随状态。");
+        }
 
         if (playerAnimator == null)
         {

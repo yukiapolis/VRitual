@@ -18,6 +18,12 @@ public class PlayerVisualFollower : MonoBehaviour
     [SerializeField] private bool logBindingOnStart = true;
     [SerializeField] private bool forceRuntimePreset = true;
 
+    [Header("姿态偏移")]
+    [SerializeField] private float sitBodyHeightOffset = -1.25f;
+    [SerializeField] private float sitForwardOffset = -0.20f;
+    [SerializeField] private float crouchBodyHeightOffset = -1.55f;
+    [SerializeField] private float crouchForwardOffset = -0.18f;
+
     [Header("第一人称可视性")]
     [SerializeField] private bool hideHeadRenderersOnStart = true;
     [SerializeField] private bool hideHeadBoneHierarchyFirst = true;
@@ -26,6 +32,10 @@ public class PlayerVisualFollower : MonoBehaviour
     private readonly List<Renderer> hiddenRenderers = new List<Renderer>();
     private bool runtimeUpdatePosition = true;
     private bool runtimeUpdateRotation = true;
+    private float runtimeBodyHeightOffset;
+    private float runtimeForwardOffset;
+    private float runtimeSideOffset;
+    private float runtimeYawRotationOffset;
 
     private void Start()
     {
@@ -39,6 +49,8 @@ public class PlayerVisualFollower : MonoBehaviour
             yawRotationOffset = 0f;
             Debug.Log($"PlayerVisualFollower.Start: 已强制应用运行时预设 bodyHeightOffset={bodyHeightOffset}, forwardOffset={forwardOffset}, sideOffset={sideOffset}, yawRotationOffset={yawRotationOffset}");
         }
+
+        ApplyRuntimeOffsets(bodyHeightOffset, forwardOffset, sideOffset, yawRotationOffset, "StartBase");
 
         if (logBindingOnStart)
         {
@@ -84,9 +96,9 @@ public class PlayerVisualFollower : MonoBehaviour
         if (runtimeUpdatePosition && updatePosition)
         {
             Vector3 targetPosition = trackedHead.position;
-            targetPosition += flattenedForward * forwardOffset;
-            targetPosition += flattenedRight * sideOffset;
-            targetPosition.y += bodyHeightOffset;
+            targetPosition += flattenedForward * runtimeForwardOffset;
+            targetPosition += flattenedRight * runtimeSideOffset;
+            targetPosition.y += runtimeBodyHeightOffset;
             transform.position = targetPosition;
         }
 
@@ -95,7 +107,7 @@ public class PlayerVisualFollower : MonoBehaviour
             if (followYawOnly)
             {
                 Vector3 euler = transform.eulerAngles;
-                euler.y = Quaternion.LookRotation(flattenedForward, Vector3.up).eulerAngles.y + yawRotationOffset;
+                euler.y = Quaternion.LookRotation(flattenedForward, Vector3.up).eulerAngles.y + runtimeYawRotationOffset;
                 transform.eulerAngles = euler;
             }
             else
@@ -110,6 +122,21 @@ public class PlayerVisualFollower : MonoBehaviour
         runtimeUpdatePosition = positionEnabled;
         runtimeUpdateRotation = rotationEnabled;
         Debug.Log($"PlayerVisualFollower.SetFollowEnabled: self={name}, positionEnabled={positionEnabled}, rotationEnabled={rotationEnabled}");
+    }
+
+    public void ApplyStandProfile()
+    {
+        ApplyRuntimeOffsets(bodyHeightOffset, forwardOffset, sideOffset, yawRotationOffset, "Stand");
+    }
+
+    public void ApplySitProfile()
+    {
+        ApplyRuntimeOffsets(sitBodyHeightOffset, sitForwardOffset, sideOffset, yawRotationOffset, "Sit");
+    }
+
+    public void ApplyCrouchProfile()
+    {
+        ApplyRuntimeOffsets(crouchBodyHeightOffset, crouchForwardOffset, sideOffset, yawRotationOffset, "Crouch");
     }
 
     [ContextMenu("Log Current Follower State")]
@@ -184,6 +211,15 @@ public class PlayerVisualFollower : MonoBehaviour
         }
 
         Debug.Log($"PlayerVisualFollower.HideHeadRenderers: total disabled = {hiddenRenderers.Count}");
+    }
+
+    private void ApplyRuntimeOffsets(float height, float forward, float side, float yaw, string source)
+    {
+        runtimeBodyHeightOffset = height;
+        runtimeForwardOffset = forward;
+        runtimeSideOffset = side;
+        runtimeYawRotationOffset = yaw;
+        Debug.Log($"PlayerVisualFollower.ApplyRuntimeOffsets: self={name}, source={source}, bodyHeightOffset={runtimeBodyHeightOffset}, forwardOffset={runtimeForwardOffset}, sideOffset={runtimeSideOffset}, yawRotationOffset={runtimeYawRotationOffset}");
     }
 
     private void AutoAssign()

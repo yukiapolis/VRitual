@@ -34,6 +34,8 @@ public class State_Conversation : StepBase
     public bool resetProgressOnLookAway = true;
     public bool showDebugLog = true;
     public float debugLogInterval = 0.25f;
+    [Tooltip("启用该步骤前是否允许播放交谈提醒音。关闭后，只有步骤真的开始后才会有提醒音。")]
+    public bool allowReminderOnlyWhenRunning = true;
 
     [Header("视线提醒")]
     public AudioClip reminderClip;
@@ -105,6 +107,18 @@ public class State_Conversation : StepBase
     {
         bool isMalePlayer = PublicAtribuite.Instance != null && PublicAtribuite.Instance.CurrentGender == Gender.Male;
 
+        if (!IsCurrentConversationStep())
+        {
+            DisableHeadIK();
+            return;
+        }
+
+        if (!isRunning)
+        {
+            DisableHeadIK();
+            return;
+        }
+
         if (!enableContinuousHeadLookAt)
         {
             DisableHeadIK();
@@ -121,7 +135,7 @@ public class State_Conversation : StepBase
 
     private void Update()
     {
-        if (!isRunning || StepIndex != 0 || PlayerView == null || currentTargetIndex >= activeTargets.Count)
+        if (!IsCurrentConversationStep() || !isRunning || StepIndex != 0 || PlayerView == null || currentTargetIndex >= activeTargets.Count)
         {
             return;
         }
@@ -333,6 +347,18 @@ public class State_Conversation : StepBase
             Debug.Log($"交谈提醒：请把视线看回 {currentLookTarget.name}");
         }
 
+        if (!IsCurrentConversationStep())
+        {
+            Debug.Log("State_Conversation.PlayReminder: 当前不是激活中的交谈步骤，跳过提醒音。");
+            return;
+        }
+
+        if (allowReminderOnlyWhenRunning && !isRunning)
+        {
+            Debug.Log("State_Conversation.PlayReminder: 当前交谈步骤未运行，跳过提醒音。");
+            return;
+        }
+
         if (reminderClip == null || AudioManager.Instance == null)
         {
             return;
@@ -350,6 +376,22 @@ public class State_Conversation : StepBase
     private void OnDisable()
     {
         DisableHeadIK();
+    }
+
+    private bool IsCurrentConversationStep()
+    {
+        if (StepController.Instance == null)
+        {
+            Debug.LogWarning("State_Conversation.IsCurrentConversationStep: StepController.Instance 为 null，默认按未激活处理。");
+            return false;
+        }
+
+        bool isCurrent = StepController.Instance.CurrentStep == this;
+        if (!isCurrent && showDebugLog)
+        {
+            Debug.Log($"State_Conversation.IsCurrentConversationStep: 当前激活步骤不是自己。current={(StepController.Instance.CurrentStep != null ? StepController.Instance.CurrentStep.name : "null")}, self={name}");
+        }
+        return isCurrent;
     }
 
     private void OnDestroy()

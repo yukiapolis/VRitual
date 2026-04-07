@@ -227,10 +227,23 @@ public class PlayerController : MonoSingleton<PlayerController>
 
         if (playerVisualRoot == null)
         {
-            Transform visual = transform.Find("GameObject");
+            Transform visual = transform.Find("PlayerCharacter");
+            if (visual == null)
+            {
+                visual = transform.Find("GameObject");
+            }
+            if (visual == null)
+            {
+                visual = transform.Find("PlayerVisual");
+            }
             if (visual != null)
             {
                 playerVisualRoot = visual;
+                Debug.Log($"PlayerController.TrySetupPoseController: 自动绑定 playerVisualRoot = {playerVisualRoot.name}");
+            }
+            else
+            {
+                Debug.LogWarning("PlayerController.TrySetupPoseController: 未自动找到 PlayerCharacter/GameObject/PlayerVisual，请手动绑定 playerVisualRoot。");
             }
         }
 

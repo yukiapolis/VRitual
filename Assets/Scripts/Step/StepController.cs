@@ -20,6 +20,7 @@ public class StepController : MonoSingleton<StepController>
     /// </summary>
     public List<StepBase> StepList;
     private StepBase currentStep;
+    public StepBase CurrentStep => currentStep;
     public GameObject EndGO;
     private void Awake()
     {
