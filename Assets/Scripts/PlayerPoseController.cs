@@ -36,6 +36,8 @@ public class PlayerPoseController : MonoBehaviour
     [SerializeField] private string sitBoolName = "Sit";
     [SerializeField] private string crouchBoolName = "DunXia";
     [SerializeField] private string standTriggerName = "TaiShou";
+    [SerializeField] private string standUpTriggerName = "StandUp";
+    [SerializeField] private string greetingTriggerName = "GreetingResponse";
 
     private XRSeatAlignmentDebugger alignmentDebugger;
     private PlayerVisualFollower visualFollower;
@@ -66,6 +68,17 @@ public class PlayerPoseController : MonoBehaviour
 
         alignmentDebugger = FindObjectOfType<XRSeatAlignmentDebugger>();
         visualFollower = FindObjectOfType<PlayerVisualFollower>();
+
+        if (string.IsNullOrWhiteSpace(greetingTriggerName) || greetingTriggerName == "TaiShou")
+        {
+            Debug.LogWarning($"PlayerPoseController.Awake: 检测到旧的 greetingTriggerName={greetingTriggerName}，自动修正为 GreetingResponse。");
+            greetingTriggerName = "GreetingResponse";
+        }
+
+        if (string.IsNullOrWhiteSpace(standUpTriggerName))
+        {
+            standUpTriggerName = "StandUp";
+        }
     }
 
     public void Configure(Transform root, Animator animator, Transform head, Transform stand, Transform sit, Transform crouch)
@@ -78,7 +91,13 @@ public class PlayerPoseController : MonoBehaviour
         crouchAnchor = crouch;
         visualFollower = FindObjectOfType<PlayerVisualFollower>();
 
-        Debug.Log($"PlayerPoseController.Configure: root={(playerRoot != null ? playerRoot.name : "null")}, animator={(playerAnimator != null ? playerAnimator.name : "null")}, head={(trackedHead != null ? trackedHead.name : "null")}, stand={(standAnchor != null ? standAnchor.name : "null")}, sit={(sitAnchor != null ? sitAnchor.name : "null")}, crouch={(crouchAnchor != null ? crouchAnchor.name : "null")}, visualFollower={(visualFollower != null ? visualFollower.name : "null")}");
+        if (string.IsNullOrWhiteSpace(greetingTriggerName) || greetingTriggerName == "TaiShou")
+        {
+            Debug.LogWarning($"PlayerPoseController.Configure: 检测到旧的 greetingTriggerName={greetingTriggerName}，自动修正为 GreetingResponse。");
+            greetingTriggerName = "GreetingResponse";
+        }
+
+        Debug.Log($"PlayerPoseController.Configure: root={(playerRoot != null ? playerRoot.name : "null")}, animator={(playerAnimator != null ? playerAnimator.name : "null")}, head={(trackedHead != null ? trackedHead.name : "null")}, stand={(standAnchor != null ? standAnchor.name : "null")}, sit={(sitAnchor != null ? sitAnchor.name : "null")}, crouch={(crouchAnchor != null ? crouchAnchor.name : "null")}, visualFollower={(visualFollower != null ? visualFollower.name : "null")}, standUpTrigger={standUpTriggerName}, greetingTrigger={greetingTriggerName}");
 
         if (trackedHead == null && Camera.main != null)
         {
@@ -183,10 +202,10 @@ public class PlayerPoseController : MonoBehaviour
         switch (pose)
         {
             case PlayerPose.Stand:
-                Debug.Log($"PlayerPoseController.ApplyPose -> Stand: {sitBoolName}=false, {crouchBoolName}=false, trigger={standTriggerName}");
+                Debug.Log($"PlayerPoseController.ApplyPose -> Stand: {sitBoolName}=false, {crouchBoolName}=false, standUpTrigger={standUpTriggerName}");
                 SetAnimatorBool(sitBoolName, false);
                 SetAnimatorBool(crouchBoolName, false);
-                SetAnimatorTrigger(standTriggerName);
+                SetAnimatorTrigger(standUpTriggerName);
                 break;
             case PlayerPose.Sit:
                 Debug.Log($"PlayerPoseController.ApplyPose -> Sit: {crouchBoolName}=false, {sitBoolName}=true");
@@ -294,6 +313,35 @@ public class PlayerPoseController : MonoBehaviour
             default:
                 return standAnchor;
         }
+    }
+
+    public void PlayGreetingResponse()
+    {
+        if (playerAnimator == null)
+        {
+            Debug.LogWarning("PlayerPoseController.PlayGreetingResponse: playerAnimator 为 null，无法播放回应动作。");
+            return;
+        }
+
+        Debug.Log($"PlayerPoseController.PlayGreetingResponse: trigger={greetingTriggerName}, currentPose={currentPose}, animator={playerAnimator.name}, controller={(playerAnimator.runtimeAnimatorController != null ? playerAnimator.runtimeAnimatorController.name : "null")}");
+        SetAnimatorBool(walkBoolName, false);
+        SetAnimatorBool(sitBoolName, false);
+        SetAnimatorBool(crouchBoolName, false);
+        SetAnimatorTrigger(greetingTriggerName);
+    }
+
+    public bool IsHeadBowedForGreeting(float threshold)
+    {
+        Transform head = trackedHead != null ? trackedHead : Camera.main != null ? Camera.main.transform : null;
+        if (head == null)
+        {
+            Debug.LogWarning("PlayerPoseController.IsHeadBowedForGreeting: trackedHead 为 null，无法检测低头。");
+            return false;
+        }
+
+        bool bowed = head.forward.y <= threshold;
+        Debug.Log($"PlayerPoseController.IsHeadBowedForGreeting: head={head.name}, forwardY={head.forward.y:F3}, threshold={threshold}, bowed={bowed}");
+        return bowed;
     }
 
     private void SetAnimatorBool(string paramName, bool value)
